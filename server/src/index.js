@@ -13,34 +13,14 @@ const wattHoursGauge = new client.Gauge({
     help: 'Total Energy counted in Wh',
     labelNames: ['client_id']
 });
-const wattsGauge = new client.Gauge({
-    name: 'esp32_powermeter_watts',
-    help: 'Current Power in W',
-    labelNames: ['client_id']
-});
 
 let metrics = {};
-let metricsHistory = {};
 
 function setWatthours(clientId, value) {
     metrics[clientId] = {
         wattHours: value,
         timestamp: Date.now()
     };
-    let history = metricsHistory[client] || [];
-    if (history.length == 0 || value != history[history.length - 1].wattHours) {
-        history.push({
-            wattHours: value,
-            timestamp: Date.now()
-        });
-    }
-    if(history.length > 3){
-        history.shift();
-        let sampleTimeMs = history[2].timestamp - history[0].timestamp;
-        let sampleDiff = history[2].wattHours - history[0].wattHours;
-        metrics[clientId].watts = sampleDiff / (sampleTimeMs / 1000 / 60 / 60);
-    }
-    metricsHistory[client] = history;
 }
 
 function cleanupMetrics() {
@@ -55,9 +35,6 @@ async function getMetrics() {
     client.register.resetMetrics();
     for (let client in metrics) {
         wattHoursGauge.set({ 'client_id': client }, metrics[client].wattHours);
-        if(metrics[client].watts !== undefined){
-            wattsGauge.set({ 'client_id': client }, metrics[client].watts);
-        }
     }
 }
 
