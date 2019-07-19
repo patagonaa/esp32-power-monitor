@@ -61,7 +61,9 @@ mqttClient.on('connect', function () {
 mqttClient.on('message', function (topic, message) {
     let topicSplit = topic.split('/');
     let clientId = topicSplit[1];
-    setWatthours(clientId, parseInt(message.toString()));
+    let wattHours = parseInt(message.toString());
+    console.info('Got', wattHours, 'watt hours from', clientId);
+    setWatthours(clientId, wattHours);
 });
 
 setInterval(() => cleanupMetrics(), 60 * 1000);
