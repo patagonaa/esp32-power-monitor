@@ -35,7 +35,7 @@ function setWatthours(clientId, value) {
         });
     }
     if(history.length > 3){
-        history.pop();
+        history.shift();
         let sampleTimeMs = history[2].timestamp - history[0].timestamp;
         let sampleDiff = history[2].wattHours - history[0].wattHours;
         metrics[clientId].watts = sampleDiff / (sampleTimeMs / 1000 / 60 / 60);
