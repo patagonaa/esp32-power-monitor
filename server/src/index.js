@@ -39,6 +39,7 @@ function setWatthours(clientId, value) {
         let sampleTimeMs = history[1].timestamp - history[0].timestamp;
         let sampleDiff = history[1].wattHours - history[0].wattHours;
         metrics[clientId].watts = sampleDiff / (sampleTimeMs / 1000 / 60 / 60);
+        metrics[clientId].wattsTime = history[1].timestamp;
     }
     metricsHistory[client] = history;
 }
@@ -54,9 +55,10 @@ function cleanupMetrics() {
 async function getMetrics() {
     client.register.resetMetrics();
     for (let client in metrics) {
-        wattHoursGauge.set({ 'client_id': client }, metrics[client].wattHours);
-        if(metrics[client].watts !== undefined){
-            wattsGauge.set({ 'client_id': client }, metrics[client].watts);
+        let metric = metrics[client];
+        wattHoursGauge.set({ 'client_id': client }, metric.wattHours);
+        if(metric.watts !== undefined){
+            wattsGauge.set({ 'client_id': client }, metric.watts, metric.wattsTime);
         }
     }
 }
