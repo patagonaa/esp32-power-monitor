@@ -11,7 +11,6 @@ const int meterPulsePin = 0;
 const int minPulseLength = 10; // ms
 const unsigned long aliveSendInterval = 5 * 60 * 1000; // 5 minutes
 
-
 const char *mqtt_server = MQTT_SERVER;
 const char *mqtt_user = MQTT_USER;
 const char *mqtt_password = MQTT_PASSWORD;
@@ -65,6 +64,8 @@ void setup()
   Serial.println(pulseCount);
 
   // WiFi
+  WiFi.persistent(false);
+
   if (strlen(wifi_ssid) > 0)
   {
     wifiMulti.addAP(wifi_ssid, wifi_password);
@@ -91,13 +92,14 @@ void setup()
 void loop()
 {
   unsigned long currentMillis = millis();
-
   if (wifiMulti.run() != WL_CONNECTED)
   {
-    Serial.println("Reconnecting to Wifi...");
+    Serial.println("Reconnecting to Wifi failed... rebooting in 10 seconds");
+    delay(10000);
+    writePulseCountEEPROM(pulseCount);
+    ESP.restart();
   }
-
-  if (!mqttClient.connected())
+  else if (!mqttClient.connected())
   {
     String clientId = "ESPClient-";
     clientId += String(random(0xffff), HEX);
@@ -116,8 +118,8 @@ void loop()
   uint32_t currentPulseCount = pulseCount;
   if (currentPulseCount != lastPulseCount || currentMillis > (lastSendTime + aliveSendInterval))
   {
-    writePulseCountEEPROM(pulseCount);
-    if (!writePulseCountMQTT(pulseCount))
+    writePulseCountEEPROM(currentPulseCount);
+    if (!writePulseCountMQTT(currentPulseCount))
     {
       Serial.println("Error while publishing to MQTT");
     }
@@ -141,7 +143,7 @@ void writePulseCountEEPROM(pulse_t currentPulseCount)
 
 bool writePulseCountMQTT(pulse_t currentPulseCount)
 {
-  if (mqttClient.connected())
+  if (wifiClient.connected() && mqttClient.connected())
   {
     char buffer[50];
     size_t count = sprintf(buffer, "%" PRIu32, currentPulseCount);
