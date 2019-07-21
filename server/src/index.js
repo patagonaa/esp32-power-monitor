@@ -34,12 +34,15 @@ function setWatthours(clientId, value) {
             timestamp: Date.now()
         });
     }
-    if(history.length > 2){
+    //if the count increases right after there was no data we would calculate a huge power spike which is wrong
+    //so we always get 3 samples, but only use the two latest
+    if(history.length > 3){
         history.shift();
-        let sampleTimeMs = history[1].timestamp - history[0].timestamp;
-        let sampleDiff = history[1].wattHours - history[0].wattHours;
+        let sampleTimeMs = history[2].timestamp - history[1].timestamp;
+        let sampleDiff = history[2].wattHours - history[1].wattHours;
         metrics[clientId].watts = sampleDiff / (sampleTimeMs / 1000 / 60 / 60);
-        metrics[clientId].wattsTime = history[1].timestamp;
+        metrics[clientId].wattsTime = history[2].timestamp;
+        console.info('calculated', metrics[clientId].watts, 'watts from time diff', sampleTimeMs, 'Wh diff', sampleDiff);
     }
     metricsHistory[client] = history;
 }
@@ -47,7 +50,9 @@ function setWatthours(clientId, value) {
 function cleanupMetrics() {
     for (let client in metrics) {
         if (Date.now() > (metrics[client].timestamp + METRIC_MAX_AGE_SECONDS * 1000)) {
+            console.info('removing', client, 'from active clients due to inactivity');
             delete metrics[client];
+            delete metricsHistory[client];
         }
     }
 }
