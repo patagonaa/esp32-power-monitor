@@ -18,8 +18,8 @@ Development hardware consisted of:
 
 I also added a quite low (1k) pullup in addition to the internal pullup on the pulse input of the ESP32 because it was triggering when there was a power spike (EMF). A bit of debouncing had to be added to the code because even then the ESP still triggered so this might work without the additional resistor.
 
-![inside](./hardware/inside.jpg)
-![outside](./hardware/outside.jpg)
+![inside](./hardware/inside_small.jpg)
+![outside](./hardware/outside_small.jpg)
 
 ### Client
 The client sends its data to an MQTT Server for the server to subscribe to.
