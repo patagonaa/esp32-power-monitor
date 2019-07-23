@@ -6,6 +6,21 @@ PRs welcome!
 ## Architecture:
 There is a client (ESP32) and server (Node.JS) part to this project. Communication is through MQTT, so a MQTT broker the server and client can connect to is required.
 
+### Hardware
+Development hardware consisted of:
+- Housing with DIN-rail
+- 16A GFCI/circuit breaker combination
+- MeanWell 5V 2.4A PSU
+- cheap single-phase power meter with pulse output
+- DIN-Rail housing for the ESP32
+- Neutrik PowerCon True1 Power-In and -Out connectors
+- misc. installation material (spade connectors, wire, ferrules, ...)
+
+I also added a quite low (1k) pullup in addition to the internal pullup on the pulse input of the ESP32 because it was triggering when there was a power spike (EMF). A bit of debouncing had to be added to the code because even then the ESP still triggered so this might work without the additional resistor.
+
+![inside](./hardware/inside.jpg)
+![outside](./hardware/outside.jpg)
+
 ### Client
 The client sends its data to an MQTT Server for the server to subscribe to.
 Currently the exported metrics are:
@@ -31,7 +46,7 @@ There are a few variables to set here:
 
 ### Server
 The server subscribes to the MQTT topics of all power meters, collects the metrics and exposes them as Prometheus metrics.
-A few Environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for this project, so example configuration below is a `docker-compose` File:
+A few Environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for this project, so example configuration below is a `docker-compose` file:
 ```
 version: "3"
 services:
@@ -51,3 +66,4 @@ services:
 - client-side
     - [ ] support for multiple power meters (e.g. three-phase)
     - [ ] support for different pulse-count (watt-hours have to be changed to a float on the server-side too)
+    - [ ] MQTTS
