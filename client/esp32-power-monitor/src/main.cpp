@@ -11,13 +11,6 @@ const int meterPulsePin = 0;
 const int minPulseLength = 10;                         // ms
 const unsigned long aliveSendInterval = 5 * 60 * 1000; // 5 minutes
 
-const char *mqtt_server = MQTT_SERVER;
-const char *mqtt_user = MQTT_USER;
-const char *mqtt_password = MQTT_PASSWORD;
-
-const char *wifi_ssid = WIFI_SSID;
-const char *wifi_password = WIFI_PASSWORD;
-
 typedef uint32_t pulse_t;
 
 WiFiMulti wifiMulti;
@@ -70,9 +63,9 @@ void setup()
   // WiFi
   WiFi.persistent(false);
 
-  if (strlen(wifi_ssid) > 0)
+  if (strlen(WIFI_SSID) > 0)
   {
-    wifiMulti.addAP(wifi_ssid, wifi_password);
+    wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
   }
   wifiMulti.addAP("Freifunk", NULL);
   wifiMulti.addAP("karlsruhe.freifunk.net", NULL);
@@ -87,7 +80,7 @@ void setup()
   }
 
   // MQTT
-  mqttClient.setServer(mqtt_server, 1883);
+  mqttClient.setServer(MQTT_SERVER, 1883);
 
   //Random Seed
   randomSeed(micros());
@@ -104,10 +97,8 @@ void ensureConnected()
   }
   else if (!mqttClient.connected())
   {
-    String clientId = "ESPClient-";
-    clientId += String(random(0xffff), HEX);
     Serial.println("Connecting to Mqtt...");
-    if (mqttClient.connect(clientId.c_str(), mqtt_user, mqtt_password))
+    if (mqttClient.connect("powermeter-" METER_NAME, MQTT_USER, MQTT_PASSWORD))
     {
       Serial.println("connected");
     }
@@ -208,7 +199,7 @@ void IRAM_ATTR meterPulseHigh(unsigned long pulseTime)
 
 void IRAM_ATTR meterPulseLow(unsigned long pulseTime)
 {
-  if (pulseTime > (isrLastLowTime + (minPulseLength * 2) && pulseTime > (isrLastHighTime + minPulseLength)))
+  if (pulseTime > (isrLastLowTime + (minPulseLength * 2)) && pulseTime > (isrLastHighTime + minPulseLength))
   {
     portENTER_CRITICAL(&mux);
     isrPulseCount++;
