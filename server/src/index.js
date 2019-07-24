@@ -103,6 +103,7 @@ mqttClient.on('message', function (topic, message) {
         case 'dead':
             console.info('client', clientId, 'died with message', message.toString());
             removeMetrics(clientId);
+            break;
         default:
             console.warn('unknown messageType', messageType);
             break;
