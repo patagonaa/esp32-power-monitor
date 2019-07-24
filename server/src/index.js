@@ -39,24 +39,28 @@ function setWatts(clientId, value) {
     };
 }
 
+function removeMetrics(clientId){
+    delete metrics[clientId];
+}
+
 function cleanupMetrics() {
-    for (let client in metrics) {
-        if (Date.now() > (metrics[client].timestamp + METRIC_MAX_AGE_SECONDS * 1000)) {
-            console.info('removing', client, 'from active clients due to inactivity');
-            delete metrics[client];
+    for (let clientId in metrics) {
+        if (Date.now() > (metrics[clientId].timestamp + METRIC_MAX_AGE_SECONDS * 1000)) {
+            console.info('removing', clientId, 'from active clients due to inactivity');
+            removeMetrics(clientId);
         }
     }
 }
 
 async function getMetrics() {
     client.register.resetMetrics();
-    for (let client in metrics) {
-        let metric = metrics[client];
+    for (let clientId in metrics) {
+        let metric = metrics[clientId];
         if (metric.wattHours !== undefined) {
-            wattHoursGauge.set({ 'client_id': client }, metric.wattHours, metric.wattHoursTime);
+            wattHoursGauge.set({ 'client_id': clientId }, metric.wattHours, metric.wattHoursTime);
         }
         if (metric.watts !== undefined) {
-            wattsGauge.set({ 'client_id': client }, metric.watts, metric.wattsTime);
+            wattsGauge.set({ 'client_id': clientId }, metric.watts, metric.wattsTime);
         }
     }
 }
@@ -84,8 +88,8 @@ mqttClient.on('connect', function () {
 mqttClient.on('message', function (topic, message) {
     let topicSplit = topic.split('/');
     let clientId = topicSplit[1];
-    let metric = topicSplit[2];
-    switch (metric) {
+    let messageType = topicSplit[2];
+    switch (messageType) {
         case 'watthours_total':
             let wattHours = parseInt(message.toString());
             console.info('Got', wattHours, 'watt hours from', clientId);
@@ -96,8 +100,11 @@ mqttClient.on('message', function (topic, message) {
             console.info('Got', watts, 'watts from', clientId);
             setWatts(clientId, watts);
             break;
+        case 'dead':
+            console.info('client', clientId, 'died with message', message.toString());
+            removeMetrics(clientId);
         default:
-            console.warn('unknown metric', metric);
+            console.warn('unknown messageType', messageType);
             break;
     }
 });
