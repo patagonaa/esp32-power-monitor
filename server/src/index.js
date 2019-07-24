@@ -44,7 +44,6 @@ function cleanupMetrics() {
         if (Date.now() > (metrics[client].timestamp + METRIC_MAX_AGE_SECONDS * 1000)) {
             console.info('removing', client, 'from active clients due to inactivity');
             delete metrics[client];
-            delete metricsHistory[client];
         }
     }
 }
