@@ -44,6 +44,11 @@ mqttClient.on('message', function (topic, message) {
             console.info('Got', watts, 'watts from', clientId);
             sendValue('watts', clientId, watts);
             break;
+        case 'temperature_c':
+            let temperature = parseFloat(message.toString());
+            console.info('Got', temperature, '°C from', clientId);
+            sendValue('temperature', clientId, temperature);
+            break;
         case 'dead':
             console.info('client', clientId, 'died with message', message.toString());
             break;

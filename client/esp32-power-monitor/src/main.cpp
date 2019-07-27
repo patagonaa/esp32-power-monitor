@@ -8,8 +8,8 @@
 
 #define METER_NAME "esp32-01"
 const int meterPulsePin = 0;
-const int minPulseLength = 10;                         // ms
-const unsigned long aliveSendInterval = 5 * 60 * 1000; // 5 minutes
+const int minPulseLength = 10;                               // ms
+const unsigned long temperatureSendInterval = 5 * 60 * 1000; // 5 minutes
 
 typedef uint32_t pulse_t;
 
@@ -24,6 +24,10 @@ void millisIsr();
 void writePulseCountEEPROM(pulse_t currentPulseCount);
 bool writePulseCountMQTT(pulse_t currentPulseCount);
 bool writePowerMQTT(double power);
+bool writeTemperatureMQTT(double temp);
+
+//defined in arduino-esp32/cores/esp32/esp32-hal-misc.c
+float temperatureRead();
 
 volatile DRAM_ATTR pulse_t isrPulseCount = 0;         // total pulse count
 volatile DRAM_ATTR unsigned long isrLastHighTime = 0; // when was the pulse input high last
@@ -36,7 +40,7 @@ unsigned long lastHandledPulseTime = 0;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 pulse_t lastPulseCount;
-unsigned long lastSendTime = 0;
+unsigned long lastTemperatureSendTime = 0;
 void setup()
 {
   // Serial
@@ -133,12 +137,11 @@ void loop()
 
     Serial.println(currentPulseCount);
     lastPulseCount = currentPulseCount;
-    lastSendTime = currentTime;
   }
-  if (currentTime > (lastSendTime + aliveSendInterval))
+  if (currentTime > (lastTemperatureSendTime + temperatureSendInterval))
   {
-    writePulseCountMQTT(currentPulseCount);
-    lastSendTime = currentTime;
+    writeTemperatureMQTT(temperatureRead());
+    lastTemperatureSendTime = currentTime;
   }
 
   if (unhandledPulseCount > 0)
@@ -188,6 +191,17 @@ bool writePowerMQTT(double power)
     char buffer[50];
     sprintf(buffer, "%.2f", power);
     return mqttClient.publish("powermeter/" METER_NAME "/watts", buffer, false);
+  }
+  return false;
+}
+
+bool writeTemperatureMQTT(double temp)
+{
+  if (wifiClient.connected() && mqttClient.connected())
+  {
+    char buffer[50];
+    sprintf(buffer, "%.2f", temp);
+    return mqttClient.publish("powermeter/" METER_NAME "/temperature_c", buffer, false);
   }
   return false;
 }
