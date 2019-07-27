@@ -16,7 +16,7 @@ function setWatthours(clientId, value) {
         if (error) {
             console.error("error while transmitting value: ", error);
         } else {
-            console.info('successfully transmitted value');
+            console.info('successfully transmitted value: status ', response.statusCode);
         }
     });
 }
