@@ -8,28 +8,17 @@ const MQTT_PASSWORD = process.env.MQTT_PASSWORD;
 const INFLUX_SERVER = process.env.INFLUX_SERVER || "http://localhost:8086";
 const INFLUX_DATABASE = process.env.INFLUX_DATABASE || 'powermeter';
 
-function setWatthours(clientId, value) {
+function sendValue(measurement, clientId, value) {
     let requestOptions = {
-        body: `watthours_total,clientid=${clientId} value=${value}`
+        body: `${measurement},clientid=${clientId} value=${value}`
     };
     request.post(`${INFLUX_SERVER}/write?db=${INFLUX_DATABASE}`, requestOptions, (error, response, body) => {
         if (error) {
             console.error("error while transmitting value: ", error);
+        } else if (response.statusCode >= 200 && response.statusCode < 300) {
+            console.info('successfully transmitted value: ', response.statusCode);
         } else {
-            console.info('successfully transmitted value: status ', response.statusCode);
-        }
-    });
-}
-
-function setWatts(clientId, value) {
-    let requestOptions = {
-        body: `watts,clientid=${clientId} value=${value}`
-    };
-    request.post(`${INFLUX_SERVER}/write?db=${INFLUX_DATABASE}`, requestOptions, (error, response, body) => {
-        if (error) {
-            console.error("error while transmitting value: ", error);
-        } else {
-            console.info('successfully transmitted value');
+            console.error('error while transmitting value: ', response.statusCode);
         }
     });
 }
@@ -48,12 +37,12 @@ mqttClient.on('message', function (topic, message) {
         case 'watthours_total':
             let wattHours = parseInt(message.toString());
             console.info('Got', wattHours, 'watt hours from', clientId);
-            setWatthours(clientId, wattHours);
+            sendValue('watthours_total', clientId, wattHours);
             break;
         case 'watts':
             let watts = parseFloat(message.toString());
             console.info('Got', watts, 'watts from', clientId);
-            setWatts(clientId, watts);
+            sendValue('watts', clientId, watts);
             break;
         case 'dead':
             console.info('client', clientId, 'died with message', message.toString());
