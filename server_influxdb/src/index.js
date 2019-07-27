@@ -16,9 +16,9 @@ function sendValue(measurement, clientId, value) {
         if (error) {
             console.error("error while transmitting value: ", error);
         } else if (response.statusCode >= 200 && response.statusCode < 300) {
-            console.info('successfully transmitted value: ', response.statusCode);
+            console.info('successfully transmitted value: HTTP', response.statusCode);
         } else {
-            console.error('error while transmitting value: ', response.statusCode);
+            console.error('error while transmitting value: HTTP', response.statusCode);
         }
     });
 }
