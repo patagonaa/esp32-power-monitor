@@ -9,7 +9,7 @@
 #define METER_NAME "esp32-01"
 const int meterPulsePin = 0;
 const int minPulseLength = 10;                               // ms
-const unsigned long temperatureSendInterval = 5 * 60 * 1000; // 5 minutes
+const unsigned long temperatureSendInterval = 1 * 60 * 1000; // 1 minute
 
 typedef uint32_t pulse_t;
 
@@ -29,8 +29,6 @@ bool writeTemperatureMQTT(double temp);
 //defined in arduino-esp32/cores/esp32/esp32-hal-misc.c
 float temperatureRead();
 
-volatile DRAM_ATTR pulse_t isrPulseCount = 0;         // total pulse count
-volatile DRAM_ATTR unsigned long isrLastHighTime = 0; // when was the pulse input high last
 volatile DRAM_ATTR unsigned long isrLastLowTime = 0;  // when was the pulse input low last
 volatile DRAM_ATTR unsigned long isrCurrentTime = 0;
 volatile DRAM_ATTR pulse_t isrUnhandledPulseCount = 0; // number of unhandled pulses
@@ -38,13 +36,12 @@ volatile DRAM_ATTR unsigned long isrLastPulseTime = 0; // time of last pulse
 unsigned long lastHandledPulseTime = 0;
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-
-pulse_t lastPulseCount;
+pulse_t totalPulseCount;
 unsigned long lastTemperatureSendTime = 0;
 void setup()
 {
   // Serial
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   // Milliseconds Timer
   millisTimer = timerBegin(0, F_CPU / 1000000, true);
@@ -60,9 +57,8 @@ void setup()
   // EEPROM
   EEPROM.begin(4);
   //writePulseCountEEPROM(181);
-  isrPulseCount = (EEPROM.read(0) << 24) | (EEPROM.read(1) << 16) | (EEPROM.read(2) << 8) | EEPROM.read(3);
-  lastPulseCount = isrPulseCount;
-  Serial.println(isrPulseCount);
+  totalPulseCount = (EEPROM.read(0) << 24) | (EEPROM.read(1) << 16) | (EEPROM.read(2) << 8) | EEPROM.read(3);
+  Serial.println(totalPulseCount);
 
   // WiFi
   WiFi.persistent(false);
@@ -96,7 +92,7 @@ void ensureConnected()
   {
     Serial.println("Reconnecting to Wifi failed... rebooting in 10 seconds");
     delay(10000);
-    writePulseCountEEPROM(isrPulseCount);
+    writePulseCountEEPROM(totalPulseCount + isrUnhandledPulseCount);
     ESP.restart();
   }
   else if (!mqttClient.connected())
@@ -120,24 +116,12 @@ void loop()
   ensureConnected();
 
   portENTER_CRITICAL(&mux);
-  pulse_t currentPulseCount = isrPulseCount;
   unsigned long currentTime = isrCurrentTime;
   pulse_t unhandledPulseCount = isrUnhandledPulseCount;
   unsigned long lastUnhandledPulseTime = isrLastPulseTime;
   isrUnhandledPulseCount = 0;
   portEXIT_CRITICAL(&mux);
 
-  if (currentPulseCount != lastPulseCount)
-  {
-    writePulseCountEEPROM(currentPulseCount);
-    if (!writePulseCountMQTT(currentPulseCount))
-    {
-      Serial.println("Error while publishing to MQTT");
-    }
-
-    Serial.println(currentPulseCount);
-    lastPulseCount = currentPulseCount;
-  }
   if (currentTime > (lastTemperatureSendTime + temperatureSendInterval))
   {
     writeTemperatureMQTT(temperatureRead());
@@ -146,6 +130,16 @@ void loop()
 
   if (unhandledPulseCount > 0)
   {
+    totalPulseCount += unhandledPulseCount;
+
+    writePulseCountEEPROM(totalPulseCount);
+    if (!writePulseCountMQTT(totalPulseCount))
+    {
+      Serial.println("Error while publishing to MQTT");
+    }
+
+    Serial.println(totalPulseCount);
+
     if (lastHandledPulseTime != 0)
     {
       pulse_t pulseDiff = unhandledPulseCount;
@@ -160,8 +154,8 @@ void loop()
     lastHandledPulseTime = lastUnhandledPulseTime;
   }
 
-  delay(100);
   mqttClient.loop();
+  delay(100);
 }
 
 void writePulseCountEEPROM(pulse_t currentPulseCount)
@@ -208,20 +202,17 @@ bool writeTemperatureMQTT(double temp)
 
 void IRAM_ATTR meterPulseHigh(unsigned long pulseTime)
 {
-  isrLastHighTime = pulseTime;
+  if (pulseTime > (isrLastLowTime + minPulseLength))
+  {
+    portENTER_CRITICAL(&mux);
+    isrUnhandledPulseCount++;
+    isrLastPulseTime = pulseTime;
+    portEXIT_CRITICAL(&mux);
+  }
 }
 
 void IRAM_ATTR meterPulseLow(unsigned long pulseTime)
 {
-  if (pulseTime > (isrLastLowTime + (minPulseLength * 2)) && pulseTime > (isrLastHighTime + minPulseLength))
-  {
-    portENTER_CRITICAL(&mux);
-    isrPulseCount++;
-    isrLastPulseTime = pulseTime;
-    isrUnhandledPulseCount++;
-    portEXIT_CRITICAL(&mux);
-  }
-
   isrLastLowTime = pulseTime;
 }
 
