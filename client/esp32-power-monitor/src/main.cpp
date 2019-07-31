@@ -128,11 +128,12 @@ void loop()
   {
     if (writeStatsMQTT(temperatureRead(), currentTime))
     {
+      Serial.println("published stats to MQTT");
       lastStatsSendTime = currentTime;
     }
     else
     {
-      Serial.println("Error while publishing temperature to MQTT");
+      Serial.println("Error while publishing stats to MQTT");
     }
   }
 
@@ -154,7 +155,7 @@ void loop()
       time_ms_t timeDiff = lastUnhandledPulseTime - lastHandledPulseTime;
       if (timeDiff > 0)
       {
-        float power = (float)pulseDiff / (timeDiff / 1000.0f / 60.0f / 60.0f);
+        float power = (float)pulseDiff / (timeDiff / 1000.0f / 60.0f / 60.0f) / pulsesPerKilowattHour * 1000.0f;
         writePowerMQTT(power);
       }
     }
@@ -216,10 +217,10 @@ void IRAM_ATTR meterPulseHigh(time_ms_t pulseTime)
 {
   if (pulseTime > (isrLastLowTime + minPulseLength))
   {
-    portENTER_CRITICAL(&mux);
+    portENTER_CRITICAL_ISR(&mux);
     isrUnhandledPulseCount++;
     isrLastPulseTime = pulseTime;
-    portEXIT_CRITICAL(&mux);
+    portEXIT_CRITICAL_ISR(&mux);
   }
 }
 
@@ -230,15 +231,15 @@ void IRAM_ATTR meterPulseLow(time_ms_t pulseTime)
 
 void IRAM_ATTR meterPulseIsr()
 {
-  portENTER_CRITICAL(&mux);
+  portENTER_CRITICAL_ISR(&mux);
   time_ms_t pulseTime = isrCurrentTime;
-  portEXIT_CRITICAL(&mux);
+  portEXIT_CRITICAL_ISR(&mux);
   digitalRead(meterPulsePin) ? meterPulseHigh(pulseTime) : meterPulseLow(pulseTime);
 }
 
 void IRAM_ATTR millisIsr()
 {
-  portENTER_CRITICAL(&mux);
+  portENTER_CRITICAL_ISR(&mux);
   isrCurrentTime++;
-  portEXIT_CRITICAL(&mux);
+  portEXIT_CRITICAL_ISR(&mux);
 }
