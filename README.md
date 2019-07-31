@@ -28,7 +28,7 @@ Currently the exported metrics are:
 - current power usage calculated
 - internal ESP32 temperature (offset can be ±10°C, also it is not terribly accurate)
 
-Currently the code is for single-phase power meters with a (low-active) pulse output with a rate of one pulse per watt-hour only. Be sure to send a pull-request if you make this configurable.
+Currently the code is for single-phase power meters with a (low-active) pulse output only. Be sure to send a pull-request if you make this configurable.
 
 Total power measured is also saved in the Flash of the ESP32 so it doesn't get lost after power loss. To initialize this value to your meters' reading, comment in `//writePulseCountEEPROM(xxx);` in `setup()` and replace `xxx` with your reading in watt-hours (be sure to comment this out again after running it!).
 
@@ -43,7 +43,8 @@ There are a few variables to set here:
 - `METER_NAME`: Client ID of this client (used for the MQTT topic)
 - `meterPulsePin`: Pin where the pulse output of the power meter is connected to
 - `minPulseLength`: minimum pulse high/low time for debouncing (pulse is counted when the pulse has been high and then low for this amount of time)
-- `temperatureSendInterval`: temperature will be sent in this interval
+- `statsSendInterval`: temperature and uptime will be sent in this interval
+- `pulsesPerKilowattHour`
 
 ### Server
 The server subscribes to the MQTT topics of all power meters and collects the metrics. A few Environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for both exporters, so each example configuration below is a `docker-compose.yml` file:
