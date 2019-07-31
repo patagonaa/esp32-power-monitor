@@ -6,12 +6,14 @@
 
 #include "credentials.h"
 
+typedef uint32_t pulse_t;
+typedef uint64_t time_ms_t;
+
 #define METER_NAME "esp32-01"
 const int meterPulsePin = 0;
-const int minPulseLength = 10;                               // ms
-const unsigned long temperatureSendInterval = 1 * 60 * 1000; // 1 minute
-
-typedef uint32_t pulse_t;
+const int minPulseLength = 10;                     // ms
+const time_ms_t statsSendInterval = 1 * 60 * 1000; // 1 minute
+const float pulsesPerKilowattHour = 1000;
 
 WiFiMulti wifiMulti;
 WiFiClient wifiClient;
@@ -22,22 +24,22 @@ hw_timer_t *millisTimer = NULL;
 void meterPulseIsr();
 void millisIsr();
 void writePulseCountEEPROM(pulse_t currentPulseCount);
-bool writePulseCountMQTT(pulse_t currentPulseCount);
-bool writePowerMQTT(double power);
-bool writeTemperatureMQTT(double temp);
+bool writeWattHoursMQTT(float wattHours);
+bool writePowerMQTT(float power);
+bool writeStatsMQTT(float temp, time_ms_t time);
 
 //defined in arduino-esp32/cores/esp32/esp32-hal-misc.c
 float temperatureRead();
 
-volatile DRAM_ATTR unsigned long isrLastLowTime = 0;  // when was the pulse input low last
-volatile DRAM_ATTR unsigned long isrCurrentTime = 0;
+volatile DRAM_ATTR time_ms_t isrLastLowTime = 0; // when was the pulse input low last
+volatile DRAM_ATTR time_ms_t isrCurrentTime = 0;
 volatile DRAM_ATTR pulse_t isrUnhandledPulseCount = 0; // number of unhandled pulses
-volatile DRAM_ATTR unsigned long isrLastPulseTime = 0; // time of last pulse
-unsigned long lastHandledPulseTime = 0;
+volatile DRAM_ATTR time_ms_t isrLastPulseTime = 0;     // time of last pulse
+time_ms_t lastHandledPulseTime = 0;
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 pulse_t totalPulseCount;
-unsigned long lastTemperatureSendTime = 0;
+time_ms_t lastStatsSendTime = 0;
 void setup()
 {
   // Serial
@@ -106,7 +108,7 @@ void ensureConnected()
     {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
-      delay(5000);
+      delay(1000);
     }
   }
 }
@@ -114,18 +116,24 @@ void ensureConnected()
 void loop()
 {
   ensureConnected();
-
+  mqttClient.loop();
   portENTER_CRITICAL(&mux);
-  unsigned long currentTime = isrCurrentTime;
+  time_ms_t currentTime = isrCurrentTime;
   pulse_t unhandledPulseCount = isrUnhandledPulseCount;
-  unsigned long lastUnhandledPulseTime = isrLastPulseTime;
+  time_ms_t lastUnhandledPulseTime = isrLastPulseTime;
   isrUnhandledPulseCount = 0;
   portEXIT_CRITICAL(&mux);
 
-  if (currentTime > (lastTemperatureSendTime + temperatureSendInterval))
+  if (currentTime > (lastStatsSendTime + statsSendInterval))
   {
-    writeTemperatureMQTT(temperatureRead());
-    lastTemperatureSendTime = currentTime;
+    if (writeStatsMQTT(temperatureRead(), currentTime))
+    {
+      lastStatsSendTime = currentTime;
+    }
+    else
+    {
+      Serial.println("Error while publishing temperature to MQTT");
+    }
   }
 
   if (unhandledPulseCount > 0)
@@ -133,9 +141,9 @@ void loop()
     totalPulseCount += unhandledPulseCount;
 
     writePulseCountEEPROM(totalPulseCount);
-    if (!writePulseCountMQTT(totalPulseCount))
+    if (!writeWattHoursMQTT((totalPulseCount / pulsesPerKilowattHour) * 1000.0f))
     {
-      Serial.println("Error while publishing to MQTT");
+      Serial.println("Error while publishing watthours to MQTT");
     }
 
     Serial.println(totalPulseCount);
@@ -143,10 +151,10 @@ void loop()
     if (lastHandledPulseTime != 0)
     {
       pulse_t pulseDiff = unhandledPulseCount;
-      unsigned long timeDiff = lastUnhandledPulseTime - lastHandledPulseTime;
+      time_ms_t timeDiff = lastUnhandledPulseTime - lastHandledPulseTime;
       if (timeDiff > 0)
       {
-        double power = (double)pulseDiff / (timeDiff / 1000.0 / 60.0 / 60.0);
+        float power = (float)pulseDiff / (timeDiff / 1000.0f / 60.0f / 60.0f);
         writePowerMQTT(power);
       }
     }
@@ -167,18 +175,18 @@ void writePulseCountEEPROM(pulse_t currentPulseCount)
   EEPROM.commit();
 }
 
-bool writePulseCountMQTT(pulse_t currentPulseCount)
+bool writeWattHoursMQTT(float wattHours)
 {
   if (wifiClient.connected() && mqttClient.connected())
   {
     char buffer[50];
-    sprintf(buffer, "%" PRIu32, currentPulseCount);
+    sprintf(buffer, "%.2f", wattHours);
     return mqttClient.publish("powermeter/" METER_NAME "/watthours_total", buffer, true);
   }
   return false;
 }
 
-bool writePowerMQTT(double power)
+bool writePowerMQTT(float power)
 {
   if (wifiClient.connected() && mqttClient.connected())
   {
@@ -189,18 +197,22 @@ bool writePowerMQTT(double power)
   return false;
 }
 
-bool writeTemperatureMQTT(double temp)
+bool writeStatsMQTT(float temp, time_ms_t time)
 {
   if (wifiClient.connected() && mqttClient.connected())
   {
     char buffer[50];
+    bool success = true;
     sprintf(buffer, "%.2f", temp);
-    return mqttClient.publish("powermeter/" METER_NAME "/temperature_c", buffer, false);
+    success &= mqttClient.publish("powermeter/" METER_NAME "/temperature_c", buffer, false);
+    sprintf(buffer, "%" PRIu64, time);
+    success &= mqttClient.publish("powermeter/" METER_NAME "/uptime_ms", buffer, false);
+    return success;
   }
   return false;
 }
 
-void IRAM_ATTR meterPulseHigh(unsigned long pulseTime)
+void IRAM_ATTR meterPulseHigh(time_ms_t pulseTime)
 {
   if (pulseTime > (isrLastLowTime + minPulseLength))
   {
@@ -211,7 +223,7 @@ void IRAM_ATTR meterPulseHigh(unsigned long pulseTime)
   }
 }
 
-void IRAM_ATTR meterPulseLow(unsigned long pulseTime)
+void IRAM_ATTR meterPulseLow(time_ms_t pulseTime)
 {
   isrLastLowTime = pulseTime;
 }
@@ -219,7 +231,7 @@ void IRAM_ATTR meterPulseLow(unsigned long pulseTime)
 void IRAM_ATTR meterPulseIsr()
 {
   portENTER_CRITICAL(&mux);
-  unsigned long pulseTime = isrCurrentTime;
+  time_ms_t pulseTime = isrCurrentTime;
   portEXIT_CRITICAL(&mux);
   digitalRead(meterPulsePin) ? meterPulseHigh(pulseTime) : meterPulseLow(pulseTime);
 }

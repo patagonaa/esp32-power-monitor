@@ -35,7 +35,7 @@ mqttClient.on('message', function (topic, message) {
     let messageType = topicSplit[2];
     switch (messageType) {
         case 'watthours_total':
-            let wattHours = parseInt(message.toString());
+            let wattHours = parseFloat(message.toString());
             console.info('Got', wattHours, 'watt hours from', clientId);
             sendValue('watthours_total', clientId, wattHours);
             break;
@@ -48,6 +48,11 @@ mqttClient.on('message', function (topic, message) {
             let temperature = parseFloat(message.toString());
             console.info('Got', temperature, '°C from', clientId);
             sendValue('temperature', clientId, temperature);
+            break;
+        case 'uptime_ms':
+            let uptime = parseFloat(message.toString());
+            console.info('Got', uptime, 'ms uptime from', clientId);
+            sendValue('uptime', clientId, uptime);
             break;
         case 'dead':
             console.info('client', clientId, 'died with message', message.toString());
