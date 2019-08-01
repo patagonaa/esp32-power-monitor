@@ -86,6 +86,5 @@ services:
 
 ## TODO?
 - client-side
-    - [ ] support for multiple power meters (e.g. three-phase)
-    - [ ] support for different pulse-count (watt-hours have to be changed to a float on the server-side too)
+    - [ ] support for multiple power meters per esp32 (e.g. three-phase)
     - [ ] MQTTS
