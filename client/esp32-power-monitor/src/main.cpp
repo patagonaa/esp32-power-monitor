@@ -31,7 +31,7 @@ bool writeStatsMQTT(float temp, time_ms_t time);
 //defined in arduino-esp32/cores/esp32/esp32-hal-misc.c
 float temperatureRead();
 
-volatile DRAM_ATTR time_ms_t isrLastLowTime = 0; // when was the pulse input low last
+volatile DRAM_ATTR time_ms_t isrLastLowTime = 1000000; // when was the pulse input low last
 volatile DRAM_ATTR time_ms_t isrCurrentTime = 0;
 volatile DRAM_ATTR pulse_t isrUnhandledPulseCount = 0; // number of unhandled pulses
 volatile DRAM_ATTR time_ms_t isrLastPulseTime = 0;     // time of last pulse
@@ -53,6 +53,7 @@ void setup()
 
   // Pulse Pin
   pinMode(meterPulsePin, INPUT_PULLUP);
+  delay(100);
   attachInterrupt(meterPulsePin, meterPulseIsr, CHANGE);
   delay(1000);
 
