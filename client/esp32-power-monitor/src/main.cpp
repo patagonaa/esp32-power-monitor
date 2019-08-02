@@ -11,7 +11,7 @@ typedef uint64_t time_ms_t;
 
 #define METER_NAME "esp32-01"
 const int meterPulsePin = 0;
-const int minPulseLength = 10;                     // ms
+const int minPulseLength = 50;                     // ms
 const time_ms_t statsSendInterval = 1 * 60 * 1000; // 1 minute
 const float pulsesPerKilowattHour = 1000;
 
