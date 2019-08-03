@@ -216,12 +216,10 @@ bool writeStatsMQTT(float temp, time_ms_t time)
 
 void IRAM_ATTR meterPulseHigh(time_ms_t pulseTime)
 {
-  if (pulseTime > (isrLastLowTime + minPulseLength))
+  if (pulseTime > (isrLastLowTime + minPulseLength) && pulseTime > (isrLastPulseTime + minPulseLength))
   {
-    portENTER_CRITICAL_ISR(&mux);
     isrUnhandledPulseCount++;
     isrLastPulseTime = pulseTime;
-    portEXIT_CRITICAL_ISR(&mux);
   }
 }
 
@@ -234,13 +232,11 @@ void IRAM_ATTR meterPulseIsr()
 {
   portENTER_CRITICAL_ISR(&mux);
   time_ms_t pulseTime = isrCurrentTime;
-  portEXIT_CRITICAL_ISR(&mux);
   digitalRead(meterPulsePin) ? meterPulseHigh(pulseTime) : meterPulseLow(pulseTime);
+  portEXIT_CRITICAL_ISR(&mux);
 }
 
 void IRAM_ATTR millisIsr()
 {
-  portENTER_CRITICAL_ISR(&mux);
   isrCurrentTime++;
-  portEXIT_CRITICAL_ISR(&mux);
 }
