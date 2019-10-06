@@ -4,4 +4,5 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/settings.json
-src/credentials.h
+src/config.h
+src/config.cpp
