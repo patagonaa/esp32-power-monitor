@@ -177,7 +177,7 @@ bool writeWattHoursMQTT(int meterCount, float wattHours)
   if (wifiClient.connected() && mqttClient.connected())
   {
     char topicBuffer[50];
-    sprintf(topicBuffer, "powermeter/%s/%d/watthours_total", METER_NAME, meterCount);
+    sprintf(topicBuffer, "powermeter/%s/watthours_total/%d", METER_NAME, meterCount);
 
     char payloadBuffer[50];
     sprintf(payloadBuffer, "%.2f", wattHours);
@@ -191,7 +191,7 @@ bool writePowerMQTT(int meterCount, float power)
   if (wifiClient.connected() && mqttClient.connected())
   {
     char topicBuffer[50];
-    sprintf(topicBuffer, "powermeter/%s/%d/watts", METER_NAME, meterCount);
+    sprintf(topicBuffer, "powermeter/%s/watts/%d", METER_NAME, meterCount);
 
     char payloadBuffer[50];
     sprintf(payloadBuffer, "%.2f", power);

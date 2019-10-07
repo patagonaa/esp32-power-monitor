@@ -65,25 +65,25 @@ mqttClient.on('message', function (topic, message) {
         case 'watthours_total':
             let wattHours = parseFloat(message.toString());
             console.info('Got', wattHours, 'watt hours from', clientId);
-            sendValue('watthours_total', { clientId: clientId, phase: phase }, wattHours);
+            sendValue('watthours_total', { clientid: clientId, phase: phase }, wattHours);
             break;
         case 'watts':
             let watts = parseFloat(message.toString());
             console.info('Got', watts, 'watts from', clientId);
-            sendValue('watts', { clientId: clientId, phase: phase }, watts);
+            sendValue('watts', { clientid: clientId, phase: phase }, watts);
             break;
         case 'temperature_c':
             let temperature = parseFloat(message.toString());
             console.info('Got', temperature, '°C from', clientId);
-            sendValue('temperature', { clientId: clientId }, temperature);
+            sendValue('temperature', { clientid: clientId }, temperature);
             break;
         case 'uptime_ms':
             let uptime = parseFloat(message.toString());
             console.info('Got', uptime, 'ms uptime from', clientId);
-            sendValue('uptime', { clientId: clientId }, uptime);
+            sendValue('uptime', { clientid: clientId }, uptime);
             break;
         case 'dead':
-            console.info('client', { clientId: clientId }, 'died with message', message.toString());
+            console.info('client', { clientid: clientId }, 'died with message', message.toString());
             break;
         default:
             console.warn('unknown messageType', messageType);
