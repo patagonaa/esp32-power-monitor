@@ -60,16 +60,15 @@ mqttClient.on('message', function (topic, message) {
     let topicSplit = topic.split('/');
     let clientId = topicSplit[1];
     let messageType = topicSplit[2];
+    let phase = topicSplit[3] || 'missing';
     switch (messageType) {
         case 'watthours_total':
             let wattHours = parseFloat(message.toString());
-            let phase = topicSplit[3];
             console.info('Got', wattHours, 'watt hours from', clientId);
             sendValue('watthours_total', { clientId: clientId, phase: phase }, wattHours);
             break;
         case 'watts':
             let watts = parseFloat(message.toString());
-            let phase = topicSplit[3];
             console.info('Got', watts, 'watts from', clientId);
             sendValue('watts', { clientId: clientId, phase: phase }, watts);
             break;
