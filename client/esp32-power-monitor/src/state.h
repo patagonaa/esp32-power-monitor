@@ -7,7 +7,6 @@ typedef uint32_t pulse_t;
 
 struct meterState
 {
-    pulse_t totalPulseCount;
     pulse_t unhandledPulseCount;
     time_ms_t lastActiveTime; // when did the pin last go high (if not inverted)
     time_ms_t lastPulseTime; // when was the last pulse counted

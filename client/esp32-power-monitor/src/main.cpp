@@ -27,6 +27,7 @@ bool writeWattHoursMQTT(int meterNum, float wattHours);
 bool writePowerMQTT(int meterNum, float power);
 
 volatile DRAM_ATTR time_ms_t isrCurrentTime = 0;
+pulse_t totalPulseCounts[METER_COUNT] = {};
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 void setup()
@@ -47,7 +48,7 @@ void setup()
     isrMeterStates[i].lastActiveTime = 1000000;
     isrMeterStates[i].unhandledPulseCount = 0;
     isrMeterStates[i].lastPulseTime = 0;
-    isrMeterStates[i].totalPulseCount = readPulseCountEEPROM(i);
+    totalPulseCounts[i] = readPulseCountEEPROM(i);
   }
 
   // Pins
@@ -106,6 +107,7 @@ void setup()
 
 time_ms_t lastHandledPulseTimes[METER_COUNT] = {};
 
+
 void loop()
 {
   struct meterState meterStates[METER_COUNT];
@@ -122,11 +124,11 @@ void loop()
   {
     pulse_t lastUnhandledPulseTime = meterStates[i].lastPulseTime;
     pulse_t unhandledPulseCount = meterStates[i].unhandledPulseCount;
-    pulse_t totalPulseCount = meterStates[i].totalPulseCount;
 
     if (unhandledPulseCount > 0)
     {
-      totalPulseCount += unhandledPulseCount;
+      totalPulseCounts[i] += unhandledPulseCount;
+      pulse_t totalPulseCount = totalPulseCounts[i];
 
       writePulseCountEEPROM(i, totalPulseCount);
       if (!writeWattHoursMQTT(i, (totalPulseCount / meterConfigs[i].pulsesPerKilowattHour) * 1000.0f))
