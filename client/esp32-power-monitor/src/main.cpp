@@ -136,6 +136,9 @@ void loop()
         Serial.println("Error while publishing watthours to MQTT");
       }
 
+      Serial.print("Meter ");
+      Serial.print(i);
+      Serial.print(": ");
       Serial.println(totalPulseCount);
 
       if (lastHandledPulseTimes[i] != 0)

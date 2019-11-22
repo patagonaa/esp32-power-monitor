@@ -64,12 +64,12 @@ mqttClient.on('message', function (topic, message) {
     switch (messageType) {
         case 'watthours_total':
             let wattHours = parseFloat(message.toString());
-            console.info('Got', wattHours, 'watt hours from', clientId);
+            console.info('Got', wattHours, 'watt hours from', clientId, phase);
             sendValue('watthours_total', { clientid: clientId, phase: phase }, wattHours);
             break;
         case 'watts':
             let watts = parseFloat(message.toString());
-            console.info('Got', watts, 'watts from', clientId);
+            console.info('Got', watts, 'watts from', clientId, phase);
             sendValue('watts', { clientid: clientId, phase: phase }, watts);
             break;
         case 'temperature_c':
