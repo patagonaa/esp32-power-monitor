@@ -21,6 +21,8 @@ I also added a quite low (1k) pullup in addition to the internal pullup on the p
 ![inside](./hardware/inside_small.jpg)
 ![outside](./hardware/outside_small.jpg)
 
+(Later, the PowerCon input was replaced with a 16A CEE 3-phase plug and two PowerCon outputs and power meters were added so it can be used for power distribution with seperate measurement of the three phases)
+
 ### Client
 The client sends its data to an MQTT Server for the server to subscribe to.
 Currently the exported metrics are:
@@ -86,5 +88,5 @@ services:
 
 ## TODO?
 - client-side
-    - [ ] support for multiple power meters per esp32 (e.g. three-phase)
+    - [x] support for multiple power meters per esp32 (e.g. three-phase)
     - [ ] MQTTS
