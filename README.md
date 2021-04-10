@@ -30,8 +30,6 @@ Currently the exported metrics are:
 - current power usage calculated
 - internal ESP32 temperature (offset can be ±10°C, also it is not terribly accurate)
 
-Currently the code is for single-phase power meters with a (low-active) pulse output only. Be sure to send a pull-request if you make this configurable.
-
 Total power measured is also saved in the Flash of the ESP32 so it doesn't get lost after power loss. To initialize this value to your meters' reading, comment in `//writePulseCountEEPROM(xxx);` in `setup()` and replace `xxx` with your reading in watt-hours (be sure to comment this out again after running it!).
 
 #### Configuration
@@ -40,13 +38,14 @@ Total power measured is also saved in the Flash of the ESP32 so it doesn't get l
 The client tries to subscribe to nearby Freifunk WiFi Networks, but you can configure a private WiFi network here as well.
 MQTT Server credentials are configured here as well.
 
-`main.cpp`:
+`config.cpp` / `config.h`:
 There are a few variables to set here:
 - `METER_NAME`: Client ID of this client (used for the MQTT topic)
-- `meterPulsePin`: Pin where the pulse output of the power meter is connected to
-- `minPulseLength`: minimum pulse high/low time for debouncing (pulse is counted when the pulse has been high and then low for this amount of time)
-- `statsSendInterval`: temperature and uptime will be sent in this interval
-- `pulsesPerKilowattHour`
+- `STATS_SEND_INTERVAL`: temperature and uptime will be sent in this interval
+- `meterConfigs`: multiple meters can be configured by increasing `METER_COUNT` and adding array entries
+    - `meterPulsePin`: Pin where the pulse output of the power meter is connected to
+    - `minPulseLength`: minimum pulse high/low time for debouncing (pulse is counted when the pulse has been high and then low for this amount of time)
+    - `pulsesPerKilowattHour`
 
 ### Server
 The server subscribes to the MQTT topics of all power meters and collects the metrics. A few Environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for both exporters, so each example configuration below is a `docker-compose.yml` file:
