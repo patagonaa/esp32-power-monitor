@@ -10,11 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/patagonaa/esp32-power-monitor.git"
   },
-  "keywords": [
-    "mikrotik",
-    "mikrotik-swos",
-    "prometheus"
-  ],
+  "keywords": [],
   "author": "patagona",
   "license": "MIT",
   "bugs": {
@@ -22,7 +18,7 @@
   },
   "homepage": "https://github.com/patagonaa/esp32-power-monitor#readme",
   "dependencies": {
-    "mqtt": "^3.0.0",
+    "mqtt": "^4.2.8",
     "request": "^2.88.0"
   }
 }

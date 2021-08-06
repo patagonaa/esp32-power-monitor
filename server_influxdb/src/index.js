@@ -51,12 +51,17 @@ function sendValue(measurement, tags, value) {
 
 const mqttClient = mqtt.connect(MQTT_SERVER, { username: MQTT_USER, password: MQTT_PASSWORD });
 
-mqttClient.on('connect', function () {
+mqttClient.on('error', x => {
+    console.log(x);
+})
+
+mqttClient.on('connect', () => {
+    console.log('connected');
     mqttClient.subscribe('powermeter/+/+');
     mqttClient.subscribe('powermeter/+/+/+');
 });
 
-mqttClient.on('message', function (topic, message) {
+mqttClient.on('message', (topic, message) => {
     let topicSplit = topic.split('/');
     let clientId = topicSplit[1];
     let messageType = topicSplit[2];
