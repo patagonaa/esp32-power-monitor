@@ -13,15 +13,18 @@ Development hardware consisted of:
 - MeanWell 5V 2.4A PSU
 - cheap single-phase power meter with pulse output (1000 pulses per kWh)
 - DIN-Rail housing for the ESP32
-- Neutrik PowerCon True1 Power-In and -Out connectors
+- Neutrik powerCON TRUE1 power in and out connectors
 - misc. installation material (spade connectors, wire, ferrules, ...)
 
 I also added a quite low (1k) pullup in addition to the internal pullup on the pulse input of the ESP32 because it was triggering when there was a power spike (EMF). A bit of debouncing had to be added to the code because even then the ESP still triggered so this might work without the additional resistor.
 
-![inside](./hardware/inside_small.jpg)
-![outside](./hardware/outside_small.jpg)
+#### V2
+The powerCON TRUE1 power in was replaced by a CEE 16A three-phase plug and two breakers and power meters were added, so it can also can be used for power distribution and each phase is individually monitored and protected against over-current.
 
-(Later, the PowerCon input was replaced with a 16A CEE 3-phase plug and two PowerCon outputs and power meters were added so it can be used for power distribution with seperate measurement of the three phases)
+(full res pictures under `hardware/`)
+![outside](./hardware/outside1_small.jpg)
+![outside](./hardware/outside2_small.jpg)
+![inside](./hardware/inside_small.jpg)
 
 ### Client
 The client sends its data to an MQTT Server for the server to subscribe to.
@@ -30,25 +33,20 @@ Currently the exported metrics are:
 - current power usage calculated
 - internal ESP32 temperature (offset can be ±10°C, also it is not terribly accurate)
 
-Total power measured is also saved in the Flash of the ESP32 so it doesn't get lost after power loss. To initialize this value to your meters' reading, comment in `//writePulseCountEEPROM(xxx);` in `setup()` and replace `xxx` with your reading in watt-hours (be sure to comment this out again after running it!).
-
 #### Configuration
-
-`credentials.h`:
-The client tries to subscribe to nearby Freifunk WiFi Networks, but you can configure a private WiFi network here as well.
-MQTT Server credentials are configured here as well.
+The client tries to subscribe to nearby Freifunk WiFi Networks, but you can also configure a private WiFi network.
 
 `config.cpp` / `config.h`:
-There are a few variables to set here:
-- `METER_NAME`: Client ID of this client (used for the MQTT topic)
+There are a few variables to set here (see `config.example.h`):
+- `METER_NAME`: client ID of this client (used for the MQTT topic)
 - `STATS_SEND_INTERVAL`: temperature and uptime will be sent in this interval
 - `meterConfigs`: multiple meters can be configured by increasing `METER_COUNT` and adding array entries
-    - `meterPulsePin`: Pin where the pulse output of the power meter is connected to
+    - `meterPulsePin`: pin where the pulse output of the power meter is connected to
     - `minPulseLength`: minimum pulse high/low time for debouncing (pulse is counted when the pulse has been high and then low for this amount of time)
     - `pulsesPerKilowattHour`
 
 ### Server
-The server subscribes to the MQTT topics of all power meters and collects the metrics. A few Environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for both exporters, so each example configuration below is a `docker-compose.yml` file:
+The server subscribes to the MQTT topics of all power meters and collects the metrics. A few environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for both exporters, so each example configuration below is a `docker-compose.yml` file:
 
 #### Prometheus
 Exposes the metrics as Prometheus metrics.
