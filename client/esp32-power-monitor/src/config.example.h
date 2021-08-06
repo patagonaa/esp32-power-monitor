@@ -9,6 +9,7 @@
 
 #define WIFI_SSID "HomeWiFi"
 #define WIFI_PASSWORD "secretsecretsecret"
+#define OTA_PASSWORD "secretsecretsecret"
 
 #define STATS_SEND_INTERVAL (1 * 60 * 1000)
 

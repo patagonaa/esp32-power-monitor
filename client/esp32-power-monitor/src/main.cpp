@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include <EEPROM.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <PubSubClient.h>
+#include <ArduinoOTA.h>
 
 #include "config.h"
 #include "clients.h"
@@ -21,8 +21,6 @@ hw_timer_t *millisTimer = NULL;
 
 void meterPulseIsr();
 void millisIsr();
-pulse_t readPulseCountEEPROM(int meterNum);
-void writePulseCountEEPROM(int meterNum, pulse_t currentPulseCount);
 bool writeWattHoursMQTT(int meterNum, float wattHours);
 bool writePowerMQTT(int meterNum, float power);
 
@@ -41,14 +39,11 @@ void setup()
   timerAlarmWrite(millisTimer, 1000, true);
   timerAlarmEnable(millisTimer);
 
-  // EEPROM
-  EEPROM.begin(PULSE_COUNT_BYTES * METER_COUNT);
   for (int i = 0; i < METER_COUNT; i++)
   {
     isrMeterStates[i].lastActiveTime = 1000000;
     isrMeterStates[i].unhandledPulseCount = 0;
     isrMeterStates[i].lastPulseTime = 0;
-    totalPulseCounts[i] = readPulseCountEEPROM(i);
   }
 
   // Pins
@@ -82,6 +77,11 @@ void setup()
     Serial.println(WiFi.localIP());
   }
 
+  ArduinoOTA.setHostname("powermeter-" METER_NAME);
+  ArduinoOTA.setPassword((const char *)OTA_PASSWORD);
+  ArduinoOTA.setPort(8266);
+  ArduinoOTA.begin();
+
   // MQTT
   mqttClient.setServer(MQTT_SERVER, 1883);
 
@@ -89,31 +89,30 @@ void setup()
   randomSeed(micros());
 
   //Start background tasks
-    xTaskCreate(
+  xTaskCreate(
       loopConnection,
       "Connection",
-      10000,           /* Stack size */
-      NULL,            /* Parameter */
-      1,               /* Priority */
-      NULL);           /* Task handle. */
+      10000, /* Stack size */
+      NULL,  /* Parameter */
+      1,     /* Priority */
+      NULL); /* Task handle. */
   xTaskCreate(
       loopMetaData,
       "SendMetaData",
-      10000,           /* Stack size */
-      NULL,            /* Parameter */
-      1,               /* Priority */
-      NULL);           /* Task handle. */
+      10000, /* Stack size */
+      NULL,  /* Parameter */
+      1,     /* Priority */
+      NULL); /* Task handle. */
 }
 
 time_ms_t lastHandledPulseTimes[METER_COUNT] = {};
-
 
 void loop()
 {
   struct meterState meterStates[METER_COUNT];
 
   portENTER_CRITICAL(&mux);
-  memcpy(meterStates, (void*)isrMeterStates, sizeof(meterStates));
+  memcpy(meterStates, (void *)isrMeterStates, sizeof(meterStates));
   for (int i = 0; i < METER_COUNT; i++)
   {
     isrMeterStates[i].unhandledPulseCount = 0;
@@ -130,7 +129,6 @@ void loop()
       totalPulseCounts[i] += unhandledPulseCount;
       pulse_t totalPulseCount = totalPulseCounts[i];
 
-      writePulseCountEEPROM(i, totalPulseCount);
       if (!writeWattHoursMQTT(i, (totalPulseCount / meterConfigs[i].pulsesPerKilowattHour) * 1000.0f))
       {
         Serial.println("Error while publishing watthours to MQTT");
@@ -138,6 +136,8 @@ void loop()
 
       Serial.print("Meter ");
       Serial.print(i);
+      Serial.print(" at ");
+      Serial.print((unsigned long)lastHandledPulseTimes[i]);
       Serial.print(": ");
       Serial.println(totalPulseCount);
 
@@ -155,24 +155,8 @@ void loop()
       lastHandledPulseTimes[i] = lastUnhandledPulseTime;
     }
   }
+  ArduinoOTA.handle();
   delay(500);
-}
-
-pulse_t readPulseCountEEPROM(int meterNum)
-{
-  int offset = PULSE_COUNT_BYTES * meterNum;
-  return (EEPROM.read(offset + 0) << 24) | (EEPROM.read(offset + 1) << 16) | (EEPROM.read(offset + 2) << 8) | EEPROM.read(offset + 3);
-}
-
-void writePulseCountEEPROM(int meterNum, pulse_t currentPulseCount)
-{
-  int offset = PULSE_COUNT_BYTES * meterNum;
-
-  EEPROM.write(offset + 0, (uint8_t)(currentPulseCount >> 24 & 0xFF));
-  EEPROM.write(offset + 1, (uint8_t)(currentPulseCount >> 16 & 0xFF));
-  EEPROM.write(offset + 2, (uint8_t)(currentPulseCount >> 8 & 0xFF));
-  EEPROM.write(offset + 3, (uint8_t)(currentPulseCount & 0xFF));
-  EEPROM.commit();
 }
 
 bool writeWattHoursMQTT(int meterCount, float wattHours)
