@@ -1,5 +1,5 @@
 # esp32-power-monitor
-A project to get metrics from a simple power meter (with pulse output) over WiFi into Prometheus/Grafana.
+A project to get metrics from a simple power meter (with pulse output) over WiFi into InfluxDB/Grafana.
 
 PRs welcome!
 
@@ -22,6 +22,7 @@ I also added a quite low (1k) pullup in addition to the internal pullup on the p
 The powerCON TRUE1 power in was replaced by a CEE 16A three-phase plug and two breakers and power meters were added, so it can also can be used for power distribution and each phase is individually monitored and protected against over-current.
 
 (full res pictures under `hardware/`)
+
 ![outside](./hardware/outside1_small.jpg)
 ![outside](./hardware/outside2_small.jpg)
 ![inside](./hardware/inside_small.jpg)
@@ -46,24 +47,7 @@ There are a few variables to set here (see `config.example.h`):
     - `pulsesPerKilowattHour`
 
 ### Server
-The server subscribes to the MQTT topics of all power meters and collects the metrics. A few environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for both exporters, so each example configuration below is a `docker-compose.yml` file:
-
-#### Prometheus
-Exposes the metrics as Prometheus metrics.
-```
-version: "3"
-services:
-  esp32-powermonitor-exporter:
-    restart: unless-stopped
-    image: esp32-powermonitor-exporter
-    build: ./esp32-power-monitor/server_prometheus # clone this git repo to ./esp32-power-monitor
-    environment:
-      - "MQTT_SERVER=mqtt://mqtt.example.com"
-      - "MQTT_USER=powermeter"
-      - "MQTT_PASSWORD=secretsecretsecret"
-    ports:
-      - "9400:3000"
-```
+The server subscribes to the MQTT topics of all power meters and collects the metrics. A few environment variables have to be set for this to work, the names should be self-explanatory. There is also a Dockerfile for the adapter, so the example configuration below is a `docker-compose.yml` file:
 
 #### InfluxDB
 Sends the metrics to an InfluxDB Server.
