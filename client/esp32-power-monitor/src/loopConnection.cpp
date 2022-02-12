@@ -20,6 +20,11 @@ void ensureConnected()
     if (mqttClient.connect("powermeter-" METER_NAME, MQTT_USER, MQTT_PASSWORD, "powermeter/" METER_NAME "/dead", MQTTQOS0, false, "pwease weconnect me UwU"))
     {
       Serial.println("connected");
+      if (mqttClient.publish("powermeter/" METER_NAME "/up", "connected!", false))
+      {
+        Serial.println("sent up message successfully!");
+        connectRetryCount = 0;
+      }
     }
     else
     {
@@ -28,10 +33,6 @@ void ensureConnected()
       delay(1000);
       connectRetryCount++;
     }
-  }
-  else
-  {
-    connectRetryCount = 0;
   }
 
   if (connectRetryCount >= maxRetries)
