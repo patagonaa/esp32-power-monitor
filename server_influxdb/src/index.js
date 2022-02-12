@@ -90,6 +90,9 @@ mqttClient.on('message', (topic, message) => {
         case 'dead':
             console.info('client', { clientid: clientId }, 'died with message', message.toString());
             break;
+        case 'up':
+            console.info('client', { clientid: clientId }, 'connected with message', message.toString());
+            break;
         default:
             console.warn('unknown messageType', messageType);
             break;
