@@ -60,6 +60,7 @@ void setup()
 
   // WiFi
   WiFi.persistent(false);
+  WiFi.setHostname("powermeter-" METER_NAME);
 
   if (strlen(WIFI_SSID) > 0)
   {
