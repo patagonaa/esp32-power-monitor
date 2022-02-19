@@ -1,11 +1,13 @@
-const mqtt = require('mqtt');
-const request = require('request');
+import * as mqtt from "mqtt";
+import fetch from 'node-fetch';
 
 const MQTT_SERVER = process.env.MQTT_SERVER || "mqtt://localhost";
 const MQTT_USER = process.env.MQTT_USER;
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD;
 
 const INFLUX_SERVER = process.env.INFLUX_SERVER || "http://localhost:8086";
+const INFLUX_USER = process.env.INFLUX_USER || "";
+const INFLUX_PASSWORD = process.env.INFLUX_PASSWORD || "";
 const INFLUX_DATABASE = process.env.INFLUX_DATABASE || 'powermeter';
 
 function getLine(measurement, tags, values, timestamp_ns) {
@@ -32,21 +34,25 @@ function getLine(measurement, tags, values, timestamp_ns) {
     return body;
 }
 
-function sendValue(measurement, tags, value) {
+async function sendValue(measurement, tags, value) {
     let line = getLine(measurement, tags, { value: value });
 
     let requestOptions = {
-        body: line
-    };
-    request.post(`${INFLUX_SERVER}/write?db=${INFLUX_DATABASE}`, requestOptions, (error, response, body) => {
-        if (error) {
-            console.error("error while transmitting value: ", error);
-        } else if (response.statusCode >= 200 && response.statusCode < 300) {
-            console.info('successfully transmitted value: HTTP', response.statusCode);
-        } else {
-            console.error('error while transmitting value: HTTP', response.statusCode);
+        method: 'POST',
+        body: line,
+        headers: {
+            'Authorization': 'Basic ' + Buffer.from(INFLUX_USER + ':' + INFLUX_PASSWORD).toString('base64')
         }
-    });
+    };
+    try {
+        let response = await fetch(`${INFLUX_SERVER}/write?db=${INFLUX_DATABASE}`, requestOptions);
+        if (!response.ok) {
+            throw `status ${response.status}`;
+        }
+        console.info('successfully transmitted value: HTTP', response.status);
+    } catch (error) {
+        console.error("error while transmitting value: ", error);
+    }
 }
 
 const mqttClient = mqtt.connect(MQTT_SERVER, { username: MQTT_USER, password: MQTT_PASSWORD });
@@ -61,7 +67,7 @@ mqttClient.on('connect', () => {
     mqttClient.subscribe('powermeter/+/+/+');
 });
 
-mqttClient.on('message', (topic, message) => {
+mqttClient.on('message', async (topic, message) => {
     let topicSplit = topic.split('/');
     let clientId = topicSplit[1];
     let messageType = topicSplit[2];
@@ -70,22 +76,22 @@ mqttClient.on('message', (topic, message) => {
         case 'watthours_total':
             let wattHours = parseFloat(message.toString());
             console.info('Got', wattHours, 'watt hours from', clientId, phase);
-            sendValue('watthours_total', { clientid: clientId, phase: phase }, wattHours);
+            await sendValue('watthours_total', { clientid: clientId, phase: phase }, wattHours);
             break;
         case 'watts':
             let watts = parseFloat(message.toString());
             console.info('Got', watts, 'watts from', clientId, phase);
-            sendValue('watts', { clientid: clientId, phase: phase }, watts);
+            await sendValue('watts', { clientid: clientId, phase: phase }, watts);
             break;
         case 'temperature_c':
             let temperature = parseFloat(message.toString());
             console.info('Got', temperature, '°C from', clientId);
-            sendValue('temperature', { clientid: clientId }, temperature);
+            await sendValue('temperature', { clientid: clientId }, temperature);
             break;
         case 'uptime_ms':
             let uptime = parseFloat(message.toString());
             console.info('Got', uptime, 'ms uptime from', clientId);
-            sendValue('uptime', { clientid: clientId }, uptime);
+            await sendValue('uptime', { clientid: clientId }, uptime);
             break;
         case 'dead':
             console.info('client', { clientid: clientId }, 'died with message', message.toString());
