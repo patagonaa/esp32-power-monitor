@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/patagonaa/esp32-power-monitor#readme",
   "dependencies": {
-    "mqtt": "^4.2.8",
-    "request": "^2.88.0"
+    "mqtt": "^4.3.6",
+    "request": "^2.88.2"
   }
 }
